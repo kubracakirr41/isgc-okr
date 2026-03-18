@@ -602,4 +602,4 @@ if __name__ == "__main__":
     print("  assan_panel / PanPass26!   (Assan Panel)")
     print("  ispak       / IspPass26!   (İspak Esnek Ambalaj)")
     print("="*60 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
