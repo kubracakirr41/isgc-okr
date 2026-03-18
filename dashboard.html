@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard – İSGÇ OKR</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#0a0c10; --surface:#12151c; --surface2:#1a1e28; --border:#252a38;
+  --accent:#00e5a0; --accent2:#4d8aff; --accent3:#ff6b6b; --accent4:#ffd166;
+  --text:#e8ecf4; --muted:#6b7591;
+}
+body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; }
+body::before {
+  content:''; position:fixed; inset:0;
+  background-image: linear-gradient(rgba(0,229,160,0.025) 1px,transparent 1px),
+                    linear-gradient(90deg,rgba(0,229,160,0.025) 1px,transparent 1px);
+  background-size:40px 40px; pointer-events:none; z-index:0;
+}
+.layout { display:flex; min-height:100vh; }
+
+/* SIDEBAR */
+.sidebar {
+  width:240px; background:var(--surface); border-right:1px solid var(--border);
+  padding:24px 0; display:flex; flex-direction:column; flex-shrink:0;
+  position:fixed; height:100vh; z-index:10;
+}
+.sidebar-logo { padding:0 20px 24px; border-bottom:1px solid var(--border); }
+.sidebar-logo .badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:36px; height:36px; background:linear-gradient(135deg,#00e5a0,#4d8aff);
+  border-radius:10px; font-family:'Space Mono',monospace; font-size:11px; font-weight:700; color:#0a0c10;
+}
+.sidebar-logo .name  { font-size:13px; font-weight:700; margin-top:12px; }
+.sidebar-logo .sub   { font-size:10px; color:var(--muted); font-family:'Space Mono',monospace; }
+.nav { flex:1; padding:16px 0; }
+.nav a {
+  display:flex; align-items:center; gap:10px; padding:10px 20px;
+  font-size:13px; color:var(--muted); text-decoration:none; transition:all 0.2s;
+  border-left:2px solid transparent;
+}
+.nav a:hover { color:var(--text); background:var(--surface2); }
+.nav a.active { color:var(--accent); border-left-color:var(--accent); background:rgba(0,229,160,0.06); }
+.nav .sep { height:1px; background:var(--border); margin:8px 20px; }
+.sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); }
+.role-badge {
+  display:inline-block; padding:2px 8px; border-radius:20px; font-size:10px;
+  font-family:'Space Mono',monospace; margin-bottom:10px;
+}
+.role-badge.admin { background:rgba(77,138,255,0.15); color:var(--accent2); border:1px solid rgba(77,138,255,0.3); }
+.role-badge.company { background:rgba(0,229,160,0.1); color:var(--accent); border:1px solid rgba(0,229,160,0.2); }
+.btn-logout {
+  width:100%; padding:8px; background:transparent; border:1px solid var(--border);
+  border-radius:8px; color:var(--muted); font-size:12px; cursor:pointer;
+  transition:all 0.2s; font-family:'DM Sans',sans-serif;
+}
+.btn-logout:hover { border-color:var(--accent3); color:var(--accent3); }
+
+/* MAIN */
+.main { margin-left:240px; flex:1; padding:28px; position:relative; z-index:1; }
+.page-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:28px;
+}
+.page-header h1 { font-size:22px; font-weight:700; }
+.page-header p  { font-size:13px; color:var(--muted); margin-top:4px; }
+.header-actions { display:flex; gap:10px; align-items:center; }
+
+select {
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  padding:8px 12px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif;
+  cursor:pointer; outline:none;
+}
+.btn {
+  padding:9px 18px; border-radius:8px; font-size:13px; font-weight:600;
+  cursor:pointer; transition:all 0.2s; font-family:'DM Sans',sans-serif; border:none;
+}
+.btn-primary { background:var(--accent); color:#0a0c10; }
+.btn-primary:hover { opacity:0.9; }
+.btn-secondary { background:var(--surface2); border:1px solid var(--border); color:var(--text); }
+.btn-secondary:hover { border-color:var(--accent); color:var(--accent); }
+.btn-export { background:rgba(77,138,255,0.15); border:1px solid rgba(77,138,255,0.3); color:var(--accent2); }
+.btn-export:hover { background:rgba(77,138,255,0.25); }
+
+/* KPI ROW */
+.kpi-row { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:24px; }
+.kpi-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  padding:16px; position:relative; overflow:hidden; cursor:pointer; transition:all 0.2s;
+}
+.kpi-card::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:3px;
+  background:var(--c, var(--accent)); transform:scaleX(0); transition:transform 0.3s;
+}
+.kpi-card:hover::after, .kpi-card.sel::after { transform:scaleX(1); }
+.kpi-card:hover, .kpi-card.sel { border-color:var(--c, var(--accent)); }
+.kpi-company { font-size:9px; font-family:'Space Mono',monospace; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+.kpi-score { font-size:26px; font-weight:700; font-family:'Space Mono',monospace; color:var(--c,var(--accent)); line-height:1; }
+.kpi-sub { font-size:10px; color:var(--muted); margin-top:4px; }
+.kpi-bar { height:3px; background:var(--border); border-radius:2px; margin-top:10px; }
+.kpi-bar-fill { height:100%; border-radius:2px; background:var(--c,var(--accent)); }
+.kpi-month-count { font-size:10px; color:var(--muted); margin-top:6px; }
+
+/* GRID */
+.grid-2 { display:grid; grid-template-columns:1fr 360px; gap:20px; margin-bottom:20px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:20px; }
+
+/* CARDS */
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; padding:24px;
+}
+.card-title { font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.card-title .dot { width:7px; height:7px; border-radius:50%; }
+.card-sub { font-size:11px; color:var(--muted); margin-bottom:20px; }
+.card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:0; }
+
+/* TABLE */
+.data-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:16px; }
+.data-table th {
+  text-align:left; padding:8px 12px; font-family:'Space Mono',monospace;
+  font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px;
+  border-bottom:1px solid var(--border);
+}
+.data-table td { padding:10px 12px; border-bottom:1px solid rgba(37,42,56,0.5); }
+.data-table tr:hover td { background:var(--surface2); }
+.data-table tr:last-child td { border-bottom:none; }
+.score { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; }
+.dot-sm { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; }
+.mini-bar { width:60px; height:4px; background:var(--border); border-radius:2px; display:inline-block; vertical-align:middle; }
+.mini-bar-fill { height:100%; border-radius:2px; }
+
+/* HEATMAP */
+.hm-grid {
+  display:grid; grid-template-columns:130px repeat(12,1fr);
+  gap:3px; margin-top:16px;
+}
+.hm-h { font-size:9px; font-family:'Space Mono',monospace; color:var(--muted); text-align:center; padding:3px 0; }
+.hm-label { font-size:10px; color:var(--muted); display:flex; align-items:center; padding-right:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hm-cell {
+  border-radius:4px; height:30px; display:flex; align-items:center; justify-content:center;
+  font-size:8px; font-family:'Space Mono',monospace; color:rgba(255,255,255,0.75);
+  cursor:default; transition:transform 0.1s; position:relative;
+}
+.hm-cell:hover { transform:scale(1.2); z-index:5; }
+.hm-tooltip {
+  position:absolute; bottom:calc(100%+4px); left:50%; transform:translateX(-50%);
+  background:var(--surface2); border:1px solid var(--border); border-radius:6px;
+  padding:4px 8px; font-size:9px; white-space:nowrap; pointer-events:none;
+  opacity:0; transition:opacity 0.15s; z-index:50; color:var(--text);
+}
+.hm-cell:hover .hm-tooltip { opacity:1; }
+
+/* LOADING */
+.loading { text-align:center; padding:60px; color:var(--muted); font-family:'Space Mono',monospace; font-size:12px; }
+.spinner { display:inline-block; width:24px; height:24px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:24px; right:24px; z-index:1000; padding:12px 20px;
+  border-radius:10px; font-size:13px; font-weight:500;
+  transform:translateY(80px); opacity:0; transition:all 0.3s;
+}
+.toast.show { transform:translateY(0); opacity:1; }
+.toast.success { background:rgba(0,229,160,0.15); border:1px solid rgba(0,229,160,0.4); color:var(--accent); }
+.toast.error   { background:rgba(255,107,107,0.15); border:1px solid rgba(255,107,107,0.4); color:var(--accent3); }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="badge">KH</div>
+      <div class="name">İSGÇ OKR</div>
+      <div class="sub">Kibar Holding · 2026</div>
+    </div>
+    <nav class="nav">
+      <a href="/giris"><span>📝</span> Veri Girişi</a>
+      <a href="/dashboard" class="active"><span>📊</span> Dashboard</a>
+      <div class="sep"></div>
+      <a href="#" id="adminLink" style="display:none"><span>⚙️</span> Kullanıcı Yönetimi</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="role-badge" id="roleBadge">–</div>
+      <br>
+      <button class="btn-logout" onclick="logout()">↩ Çıkış Yap</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p>Tüm şirketlerin İSGÇ OKR performansı</p>
+      </div>
+      <div class="header-actions">
+        <select id="selYil"></select>
+        <button class="btn btn-secondary" onclick="loadAll()">↻ Yenile</button>
+        <button class="btn btn-export" onclick="exportExcel()">⬇ Excel İndir</button>
+      </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-row" id="kpiRow">
+      <div class="loading"><div class="spinner"></div><br>Yükleniyor…</div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent)"></span> Aylık İSGÇ Puan Trendi</div>
+        <div class="card-sub">Seçili şirket veya tüm şirketler ortalaması</div>
+        <canvas id="trendChart" style="max-height:260px"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span> Şirket Karşılaştırma</div>
+        <div class="card-sub">YTD ortalama İSGÇ puanı</div>
+        <canvas id="barChart" style="max-height:260px"></canvas>
+      </div>
+    </div>
+
+    <!-- HEATMAP -->
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title"><span class="dot" style="background:var(--accent3)"></span> Aylık Isı Haritası</div>
+      <div class="card-sub">Şirket × Ay – renk yoğunluğu puan düzeyini gösterir</div>
+      <div class="hm-grid" id="hmGrid"><div class="loading">Yükleniyor…</div></div>
+    </div>
+
+    <!-- DETAIL TABLE -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title"><span class="dot" style="background:var(--accent4)"></span> Şirket Detay Tablosu</div>
+          <div class="card-sub">YTD ortalaması ve aylık veri sayısı</div>
+        </div>
+      </div>
+      <table class="data-table" id="detailTable">
+        <thead><tr><th>Şirket</th><th>YTD Ort.</th><th>Ay Sayısı</th><th>İlerleme</th></tr></thead>
+        <tbody id="detailBody"><tr><td colspan="4" class="loading">Yükleniyor…</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN   = localStorage.getItem('token');
+const ROLE    = localStorage.getItem('role');
+const COMPANY = localStorage.getItem('company');
+
+if (!TOKEN) { window.location.href = '/'; }
+
+const COLORS = ['#00e5a0','#4d8aff','#ff6b6b','#ffd166','#c084fc','#38bdf8'];
+const COMPANY_NAMES = ['ASSAN ALÜMİNYUM','ASSAN HANİL','ASSAN LİMAN','ASSAN LOJİSTİK','ASSAN PANEL','İSPAK ESNEK AMBALAJ'];
+const MONTHS_TR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+const MONTH_KEYS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AGU','SEP','OKT','NOV','DEC'];
+
+let summaryData = [];
+let trendChart, barChart;
+let selectedCompany = null;
+
+// Role badge
+const rb = document.getElementById('roleBadge');
+rb.textContent = ROLE === 'admin' ? 'Admin' : (COMPANY || 'Şirket');
+rb.className = `role-badge ${ROLE}`;
+if (ROLE === 'admin') document.getElementById('adminLink').style.display = 'flex';
+
+// Yıl select
+const selYil = document.getElementById('selYil');
+const nowYear = new Date().getFullYear();
+for (let y = 2024; y <= 2028; y++) {
+  const o = document.createElement('option');
+  o.value = y; o.textContent = y;
+  if (y === nowYear) o.selected = true;
+  selYil.appendChild(o);
+}
+selYil.onchange = loadAll;
+
+async function apiFetch(url) {
+  return fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+}
+
+async function loadAll() {
+  const yil = selYil.value;
+  try {
+    const res = await apiFetch(`/api/dashboard/summary?yil=${yil}`);
+    summaryData = await res.json();
+    renderKPI();
+    renderTrend();
+    renderBar();
+    renderHeatmap();
+    renderTable();
+  } catch(e) {
+    showToast('Veri yüklenemedi', 'error');
+  }
+}
+
+function renderKPI() {
+  const row = document.getElementById('kpiRow');
+  row.innerHTML = '';
+  COMPANY_NAMES.forEach((name, i) => {
+    const d = summaryData.find(s => s.company === name) || { ytd: null, ay_sayisi: 0 };
+    const color = COLORS[i];
+    const ytd   = d.ytd != null ? d.ytd.toFixed(1) : '–';
+    const pct   = d.ytd != null ? Math.min(100, d.ytd) : 0;
+    const isSelected = selectedCompany === name;
+    const card = document.createElement('div');
+    card.className = `kpi-card ${isSelected ? 'sel' : ''}`;
+    card.style.setProperty('--c', color);
+    card.innerHTML = `
+      <div class="kpi-company">${name.replace('ASSAN ','').replace(' AMBALAJ','')}</div>
+      <div class="kpi-score">${ytd}</div>
+      <div class="kpi-sub">YTD Ort. Puan</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:${pct}%"></div></div>
+      <div class="kpi-month-count">${d.ay_sayisi} ay girildi</div>
+    `;
+    card.onclick = () => {
+      selectedCompany = isSelected ? null : name;
+      renderKPI(); renderTrend();
+    };
+    row.appendChild(card);
+  });
+}
+
+function renderTrend() {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if (trendChart) trendChart.destroy();
+
+  const visible = selectedCompany
+    ? summaryData.filter(s => s.company === selectedCompany)
+    : summaryData;
+
+  const datasets = visible.map((d, i) => {
+    const idx = COMPANY_NAMES.indexOf(d.company);
+    const color = COLORS[idx >= 0 ? idx : i % COLORS.length];
+    const values = MONTH_KEYS.map(k => d.monthly[k] ?? null);
+    return {
+      label: d.company.replace('ASSAN ',''),
+      data: values,
+      borderColor: color,
+      backgroundColor: color + '18',
+      fill: true, tension: 0.4,
+      pointRadius: 4, pointHoverRadius: 7,
+      borderWidth: 2, pointBackgroundColor: color,
+      spanGaps: true
+    };
+  });
+
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: MONTHS_TR, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color:'#6b7591', font:{ family:'DM Sans', size:11 }, boxWidth:8, padding:10 } },
+        tooltip: {
+          backgroundColor:'#1a1e28', borderColor:'#252a38', borderWidth:1,
+          titleColor:'#e8ecf4', bodyColor:'#6b7591',
+          callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(2) : 'Veri yok'}` }
+        }
+      },
+      scales: {
+        x: { grid:{ color:'#252a38' }, ticks:{ color:'#6b7591', font:{ family:'Space Mono', size:9 } } },
+        y: { grid:{ color:'#252a38' }, ticks:{ color:'#6b7591', font:{ family:'Space Mono', size:9 } },
+             min:0, max:100, title:{ display:true, text:'Puan', color:'#6b7591', font:{ size:10 } } }
+      }
+    }
+  });
+}
+
+function renderBar() {
+  const ctx = document.getElementById('barChart').getContext('2d');
+  if (barChart) barChart.destroy();
+
+  const labels = COMPANY_NAMES.map(n => n.replace('ASSAN ','').replace(' AMBALAJ',''));
+  const values = COMPANY_NAMES.map(name => {
+    const d = summaryData.find(s => s.company === name);
+    return d && d.ytd != null ? d.ytd : 0;
+  });
+
+  barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'YTD Ort. Puan',
+        data: values,
+        backgroundColor: COLORS.map(c => c + 'cc'),
+        borderColor: COLORS,
+        borderWidth: 1.5,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display:false },
+        tooltip: { backgroundColor:'#1a1e28', borderColor:'#252a38', borderWidth:1, titleColor:'#e8ecf4', bodyColor:'#6b7591' }
+      },
+      scales: {
+        x: { grid:{ display:false }, ticks:{ color:'#6b7591', font:{ family:'Space Mono', size:9 } } },
+        y: { grid:{ color:'#252a38' }, ticks:{ color:'#6b7591', font:{ family:'Space Mono', size:9 } }, min:0, max:100 }
+      }
+    }
+  });
+}
+
+function renderHeatmap() {
+  const grid = document.getElementById('hmGrid');
+  grid.innerHTML = '';
+
+  // header
+  const empty = document.createElement('div');
+  grid.appendChild(empty);
+  MONTHS_TR.forEach(m => {
+    const d = document.createElement('div');
+    d.className = 'hm-h'; d.textContent = m; grid.appendChild(d);
+  });
+
+  COMPANY_NAMES.forEach((name, ci) => {
+    const d = summaryData.find(s => s.company === name) || { monthly: {} };
+    const color = COLORS[ci];
+
+    const label = document.createElement('div');
+    label.className = 'hm-label';
+    label.textContent = name.replace('ASSAN ','').replace(' AMBALAJ','');
+    label.title = name;
+    grid.appendChild(label);
+
+    MONTH_KEYS.forEach((key, mi) => {
+      const val = d.monthly[key] ?? null;
+      const cell = document.createElement('div');
+      cell.className = 'hm-cell';
+      if (val !== null) {
+        const norm = Math.max(0, Math.min(1, (val - 30) / 70));
+        cell.style.background = color;
+        cell.style.opacity = (0.15 + norm * 0.85).toFixed(2);
+        cell.innerHTML = `<span>${val.toFixed(0)}</span>
+          <div class="hm-tooltip">${name} · ${MONTHS_TR[mi]}: ${val.toFixed(2)}</div>`;
+      } else {
+        cell.style.background = '#1a1e28';
+        cell.innerHTML = `<span style="color:#3a4057">–</span>
+          <div class="hm-tooltip">${name} · ${MONTHS_TR[mi]}: Veri yok</div>`;
+      }
+      grid.appendChild(cell);
+    });
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById('detailBody');
+  tbody.innerHTML = '';
+
+  COMPANY_NAMES.forEach((name, i) => {
+    const d = summaryData.find(s => s.company === name) || { ytd: null, ay_sayisi: 0 };
+    const color = COLORS[i];
+    const ytd  = d.ytd != null ? d.ytd.toFixed(2) : '–';
+    const pct  = d.ytd != null ? Math.min(100, d.ytd) : 0;
+    const scoreColor = d.ytd >= 70 ? '#00c87a' : (d.ytd >= 50 ? '#ffc107' : '#ff6b6b');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="dot-sm" style="background:${color}"></span><strong>${name}</strong></td>
+      <td><span class="score" style="color:${scoreColor}">${ytd}</span></td>
+      <td style="color:var(--muted); font-family:'Space Mono',monospace; font-size:11px">${d.ay_sayisi} ay</td>
+      <td>
+        <div class="mini-bar" style="width:80px">
+          <div class="mini-bar-fill" style="width:${pct}%; background:${color}"></div>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function exportExcel() {
+  const yil = selYil.value;
+  showToast('Excel hazırlanıyor…', 'success');
+  window.location.href = `/api/export/excel?yil=${yil}`;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  setTimeout(() => t.className = `toast ${type}`, 3000);
+}
+
+async function logout() {
+  await fetch('/api/logout', { method:'POST', headers:{ 'Authorization':'Bearer '+TOKEN } });
+  localStorage.clear(); window.location.href = '/';
+}
+
+loadAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Veri Girişi – İSGÇ OKR</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg:#0a0c10; --surface:#12151c; --surface2:#1a1e28; --border:#252a38;
+  --accent:#00e5a0; --accent2:#4d8aff; --text:#e8ecf4; --muted:#6b7591;
+  --red:#ff6b6b; --yellow:#ffd166; --green:#00e5a0;
+}
+body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; }
+body::before {
+  content:''; position:fixed; inset:0;
+  background-image: linear-gradient(rgba(0,229,160,0.025) 1px,transparent 1px),
+                    linear-gradient(90deg,rgba(0,229,160,0.025) 1px,transparent 1px);
+  background-size:40px 40px; pointer-events:none; z-index:0;
+}
+.layout { display:flex; min-height:100vh; position:relative; z-index:1; }
+
+/* SIDEBAR */
+.sidebar {
+  width:240px; background:var(--surface); border-right:1px solid var(--border);
+  padding:24px 0; display:flex; flex-direction:column; flex-shrink:0; position:fixed; height:100vh;
+}
+.sidebar-logo { padding:0 20px 24px; border-bottom:1px solid var(--border); }
+.sidebar-logo .badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:36px; height:36px; background:linear-gradient(135deg,#00e5a0,#4d8aff);
+  border-radius:10px; font-family:'Space Mono',monospace; font-size:11px; font-weight:700; color:#0a0c10;
+}
+.sidebar-logo .name { font-size:13px; font-weight:700; margin-top:12px; }
+.sidebar-logo .sub  { font-size:10px; color:var(--muted); font-family:'Space Mono',monospace; }
+.sidebar-company {
+  margin:16px 12px; padding:10px 12px; background:rgba(0,229,160,0.08);
+  border:1px solid rgba(0,229,160,0.2); border-radius:10px;
+}
+.sidebar-company .label { font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.sidebar-company .value { font-size:12px; font-weight:600; color:var(--accent); margin-top:2px; }
+.nav { flex:1; padding:8px 0; }
+.nav a {
+  display:flex; align-items:center; gap:10px; padding:10px 20px;
+  font-size:13px; color:var(--muted); text-decoration:none; transition:all 0.2s;
+  border-left:2px solid transparent;
+}
+.nav a:hover { color:var(--text); background:var(--surface2); }
+.nav a.active { color:var(--accent); border-left-color:var(--accent); background:rgba(0,229,160,0.06); }
+.nav .icon { font-size:16px; }
+.sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); }
+.btn-logout {
+  width:100%; padding:8px; background:transparent; border:1px solid var(--border);
+  border-radius:8px; color:var(--muted); font-size:12px; cursor:pointer;
+  transition:all 0.2s; font-family:'DM Sans',sans-serif;
+}
+.btn-logout:hover { border-color:var(--red); color:var(--red); }
+
+/* MAIN */
+.main { margin-left:240px; flex:1; padding:28px; }
+.page-header { margin-bottom:28px; }
+.page-header h1 { font-size:22px; font-weight:700; }
+.page-header p { font-size:13px; color:var(--muted); margin-top:4px; }
+
+/* PERIOD SELECTOR */
+.period-bar {
+  display:flex; gap:12px; align-items:center; flex-wrap:wrap;
+  margin-bottom:24px; padding:16px 20px;
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+}
+.period-label { font-size:11px; font-family:'Space Mono',monospace; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+select {
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  padding:8px 12px; color:var(--text); font-size:13px; font-family:'DM Sans',sans-serif;
+  cursor:pointer; outline:none; transition:border-color 0.2s;
+}
+select:focus { border-color:var(--accent); }
+.btn-load {
+  padding:8px 20px; background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); font-size:13px; cursor:pointer;
+  transition:all 0.2s; font-family:'DM Sans',sans-serif; font-weight:500;
+}
+.btn-load:hover { border-color:var(--accent); color:var(--accent); }
+.btn-save {
+  margin-left:auto; padding:10px 28px;
+  background:var(--accent); border:none; border-radius:8px;
+  color:#0a0c10; font-size:14px; font-weight:700; cursor:pointer;
+  transition:opacity 0.2s; font-family:'DM Sans',sans-serif;
+}
+.btn-save:hover { opacity:0.9; }
+.btn-save:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* OKR SECTIONS */
+.okr-section { margin-bottom:20px; }
+.okr-section-header {
+  display:flex; align-items:center; gap:12px;
+  padding:14px 20px; background:var(--surface); border:1px solid var(--border);
+  border-radius:12px 12px 0 0; cursor:pointer; user-select:none;
+}
+.okr-no-badge {
+  width:28px; height:28px; border-radius:8px;
+  background:rgba(77,138,255,0.15); border:1px solid rgba(77,138,255,0.3);
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Space Mono',monospace; font-size:11px; font-weight:700; color:var(--accent2);
+  flex-shrink:0;
+}
+.okr-name { font-size:13px; font-weight:600; flex:1; }
+.okr-chevron { font-size:14px; color:var(--muted); transition:transform 0.2s; }
+.okr-chevron.open { transform:rotate(180deg); }
+.okr-body { border:1px solid var(--border); border-top:none; border-radius:0 0 12px 12px; overflow:hidden; }
+
+/* KR ROWS */
+.kr-row {
+  display:grid; grid-template-columns:1fr 140px;
+  align-items:center; padding:12px 20px; gap:16px;
+  border-bottom:1px solid rgba(37,42,56,0.5);
+  transition:background 0.15s;
+}
+.kr-row:hover { background:var(--surface2); }
+.kr-row:last-child { border-bottom:none; }
+.kr-label { font-size:12px; line-height:1.5; color:var(--text); }
+.kr-no { font-family:'Space Mono',monospace; font-size:10px; color:var(--muted); margin-bottom:2px; }
+.kr-birim { font-size:10px; color:var(--muted); margin-left:4px; }
+.kr-input-wrap { position:relative; }
+.kr-input {
+  width:100%; padding:8px 40px 8px 12px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); font-size:14px;
+  font-family:'Space Mono',monospace; outline:none; transition:all 0.2s;
+  text-align:right;
+}
+.kr-input:focus { border-color:var(--accent); background:var(--surface); }
+.kr-input.has-value { border-color:rgba(0,229,160,0.4); }
+.kr-input.na { border-color:var(--border); color:var(--muted); }
+.birim-badge {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:9px; font-family:'Space Mono',monospace; color:var(--muted);
+  pointer-events:none;
+}
+
+/* STATUS BAR */
+.status-bar {
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:12px 20px; margin-bottom:20px;
+  background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  font-size:12px;
+}
+.status-item { display:flex; align-items:center; gap:6px; }
+.status-dot { width:8px; height:8px; border-radius:50%; }
+.saved-badge {
+  display:none; padding:4px 10px; border-radius:20px;
+  background:rgba(0,229,160,0.15); border:1px solid rgba(0,229,160,0.3);
+  color:var(--accent); font-size:11px; font-family:'Space Mono',monospace;
+}
+.progress-bar { flex:1; height:4px; background:var(--border); border-radius:2px; min-width:80px; }
+.progress-fill { height:100%; border-radius:2px; background:var(--accent); transition:width 0.4s; }
+
+/* TOAST */
+.toast {
+  position:fixed; bottom:28px; right:28px; z-index:1000;
+  padding:14px 20px; border-radius:12px;
+  font-size:13px; font-weight:500;
+  transform:translateY(100px); opacity:0; transition:all 0.3s;
+  display:flex; align-items:center; gap:10px;
+}
+.toast.show { transform:translateY(0); opacity:1; }
+.toast.success { background:rgba(0,229,160,0.15); border:1px solid rgba(0,229,160,0.4); color:var(--accent); }
+.toast.error   { background:rgba(255,107,107,0.15); border:1px solid rgba(255,107,107,0.4); color:var(--red); }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="badge">KH</div>
+      <div class="name">İSGÇ OKR</div>
+      <div class="sub">Kibar Holding · 2026</div>
+    </div>
+    <div class="sidebar-company">
+      <div class="label">Giriş Yapan Şirket</div>
+      <div class="value" id="sidebarCompany">–</div>
+    </div>
+    <nav class="nav">
+      <a href="/giris" class="active"><span class="icon">📝</span> Veri Girişi</a>
+      <a href="/dashboard"><span class="icon">📊</span> Dashboard</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="logout()">↩ Çıkış Yap</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="page-header">
+      <h1>Aylık Veri Girişi</h1>
+      <p>İlgili yıl ve ayı seçin, KR değerlerini girin, ardından kaydedin.</p>
+    </div>
+
+    <!-- PERIOD BAR -->
+    <div class="period-bar">
+      <span class="period-label">Dönem:</span>
+      <select id="selYil"></select>
+      <select id="selAy"></select>
+      <button class="btn-load" onclick="loadData()">Mevcut Veriyi Yükle</button>
+      <button class="btn-save" id="btnSave" onclick="saveData()">💾 Kaydet</button>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+      <div class="status-item">
+        <span class="status-dot" style="background:var(--accent)"></span>
+        <span id="filledCount">0</span> / <span id="totalCount">0</span> KR dolduruldu
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      <span class="saved-badge" id="savedBadge">✓ Kaydedildi</span>
+    </div>
+
+    <!-- OKR SECTIONS -->
+    <div id="okrContainer"></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN = localStorage.getItem('token');
+const ROLE  = localStorage.getItem('role');
+const COMPANY = localStorage.getItem('company');
+const MONTHS_TR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const MONTH_KEYS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AGU','SEP','OKT','NOV','DEC'];
+
+if (!TOKEN) { window.location.href = '/'; }
+
+let OKR_DATA = [];
+
+// Sidebar
+document.getElementById('sidebarCompany').textContent = COMPANY || '(yönetici)';
+
+// Yıl ve ay seçenekleri
+const selYil = document.getElementById('selYil');
+const selAy  = document.getElementById('selAy');
+const now = new Date();
+for (let y = 2024; y <= 2028; y++) {
+  const o = document.createElement('option');
+  o.value = y; o.textContent = y;
+  if (y === now.getFullYear()) o.selected = true;
+  selYil.appendChild(o);
+}
+MONTHS_TR.forEach((m, i) => {
+  const o = document.createElement('option');
+  o.value = MONTH_KEYS[i]; o.textContent = m;
+  if (i === now.getMonth() - 1) o.selected = true;
+  selAy.appendChild(o);
+});
+
+// Fetch OKR yapısı ve render
+async function init() {
+  const res = await apiFetch('/api/okr-struktur');
+  OKR_DATA = await res.json();
+  renderOKR();
+  updateProgress();
+  loadData();
+}
+
+function renderOKR() {
+  const container = document.getElementById('okrContainer');
+  container.innerHTML = '';
+  let total = 0;
+
+  OKR_DATA.forEach(okr => {
+    total += okr.krs.length;
+    const section = document.createElement('div');
+    section.className = 'okr-section';
+    section.id = `okr-${okr.no}`;
+
+    const header = document.createElement('div');
+    header.className = 'okr-section-header';
+    header.innerHTML = `
+      <div class="okr-no-badge">${okr.no}</div>
+      <div class="okr-name">${okr.okr}</div>
+      <span class="okr-chevron open" id="chev-${okr.no}">▾</span>
+    `;
+    header.onclick = () => toggleSection(okr.no);
+
+    const body = document.createElement('div');
+    body.className = 'okr-body';
+    body.id = `body-${okr.no}`;
+
+    okr.krs.forEach(kr => {
+      const row = document.createElement('div');
+      row.className = 'kr-row';
+      row.innerHTML = `
+        <div>
+          <div class="kr-no">KR ${okr.no}.${kr.no}</div>
+          <div class="kr-label">${kr.kr}</div>
+        </div>
+        <div class="kr-input-wrap">
+          <input type="number" step="any" class="kr-input"
+            id="kr-${okr.no}-${kr.no}"
+            data-okr="${okr.no}" data-kr="${kr.no}"
+            placeholder="–"
+            oninput="onInput(this)">
+          <span class="birim-badge">${kr.birim}</span>
+        </div>
+      `;
+      body.appendChild(row);
+    });
+
+    section.appendChild(header);
+    section.appendChild(body);
+    container.appendChild(section);
+  });
+
+  document.getElementById('totalCount').textContent = total;
+}
+
+function toggleSection(no) {
+  const body = document.getElementById(`body-${no}`);
+  const chev = document.getElementById(`chev-${no}`);
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  chev.className = `okr-chevron ${isOpen ? '' : 'open'}`;
+}
+
+function onInput(el) {
+  el.classList.toggle('has-value', el.value !== '');
+  updateProgress();
+}
+
+function updateProgress() {
+  const inputs = document.querySelectorAll('.kr-input');
+  const filled = [...inputs].filter(i => i.value !== '').length;
+  const total  = inputs.length;
+  document.getElementById('filledCount').textContent = filled;
+  document.getElementById('progressFill').style.width = total ? (filled/total*100)+'%' : '0%';
+}
+
+async function loadData() {
+  const yil = selYil.value;
+  const ay  = selAy.value;
+  const company = COMPANY || '';
+
+  try {
+    const res = await apiFetch(`/api/entries?yil=${yil}&ay=${ay}&company=${encodeURIComponent(company)}`);
+    const rows = await res.json();
+
+    // Clear inputs
+    document.querySelectorAll('.kr-input').forEach(i => {
+      i.value = ''; i.classList.remove('has-value');
+    });
+
+    // Fill existing
+    rows.forEach(r => {
+      const el = document.getElementById(`kr-${r.okr_no}-${r.kr_no}`);
+      if (el && r.deger !== null && r.deger !== undefined) {
+        el.value = r.deger;
+        el.classList.add('has-value');
+      }
+    });
+
+    updateProgress();
+    if (rows.length) showToast(`${rows.length} mevcut kayıt yüklendi`, 'success');
+  } catch(e) {
+    showToast('Veri yüklenirken hata oluştu', 'error');
+  }
+}
+
+async function saveData() {
+  const btn = document.getElementById('btnSave');
+  const yil = selYil.value;
+  const ay  = selAy.value;
+
+  const rows = [];
+  document.querySelectorAll('.kr-input').forEach(el => {
+    if (el.value !== '') {
+      rows.push({
+        okr_no: parseInt(el.dataset.okr),
+        kr_no:  parseInt(el.dataset.kr),
+        deger:  parseFloat(el.value)
+      });
+    }
+  });
+
+  if (rows.length === 0) {
+    showToast('Kaydedilecek veri girilmedi', 'error'); return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Kaydediliyor…';
+
+  try {
+    const res = await apiFetch('/api/entries', 'POST', {
+      yil: parseInt(yil), ay, rows, company: COMPANY
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    showToast(`${data.saved} KR kaydedildi ✓`, 'success');
+    document.getElementById('savedBadge').style.display = 'inline-block';
+    setTimeout(() => document.getElementById('savedBadge').style.display = 'none', 4000);
+  } catch(e) {
+    showToast(e.message || 'Kayıt sırasında hata', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Kaydet';
+  }
+}
+
+async function apiFetch(url, method='GET', body) {
+  const opts = {
+    method,
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(url, opts);
+}
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.className = `toast ${type}`, 3000);
+}
+
+async function logout() {
+  await apiFetch('/api/logout', 'POST');
+  localStorage.clear();
+  window.location.href = '/';
+}
+
+init();
+</script>
+</body>
+</html>

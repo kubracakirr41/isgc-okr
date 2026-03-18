@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Giriş – İSGÇ OKR Sistemi</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0c10; --surface: #12151c; --surface2: #1a1e28;
+  --border: #252a38; --accent: #00e5a0; --text: #e8ecf4; --muted: #6b7591;
+  --red: #ff6b6b;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'DM Sans', sans-serif; min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+}
+body::before {
+  content: ''; position: fixed; inset: 0;
+  background-image: linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+  background-size: 40px 40px; pointer-events: none;
+}
+.card {
+  position: relative; z-index: 1;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 48px 40px; width: 400px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+}
+.logo { text-align: center; margin-bottom: 32px; }
+.logo-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, #00e5a0, #4d8aff);
+  border-radius: 16px;
+  font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700;
+  color: #0a0c10; margin-bottom: 16px;
+}
+.logo h1 { font-size: 18px; font-weight: 700; }
+.logo p { font-size: 12px; color: var(--muted); margin-top: 4px; font-family: 'Space Mono', monospace; }
+label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; margin-top: 20px; font-weight: 500; }
+input {
+  width: 100%; padding: 12px 16px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.2s; outline: none;
+}
+input:focus { border-color: var(--accent); }
+.btn {
+  width: 100%; margin-top: 28px;
+  padding: 14px; background: var(--accent);
+  border: none; border-radius: 10px; cursor: pointer;
+  font-size: 15px; font-weight: 700; color: #0a0c10;
+  font-family: 'DM Sans', sans-serif;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.btn:hover { opacity: 0.9; }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.error {
+  margin-top: 16px; padding: 10px 14px;
+  background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.3);
+  border-radius: 8px; font-size: 13px; color: var(--red);
+  display: none;
+}
+.footer-note {
+  text-align: center; margin-top: 24px;
+  font-size: 11px; color: var(--muted);
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-badge">KH</div>
+    <h1>İSGÇ OKR Sistemi</h1>
+    <p>Kibar Holding – 2026</p>
+  </div>
+
+  <label>Kullanıcı Adı</label>
+  <input type="text" id="username" placeholder="kullanici_adi" autocomplete="username">
+
+  <label>Şifre</label>
+  <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+
+  <button class="btn" id="loginBtn" onclick="doLogin()">Giriş Yap</button>
+
+  <div class="error" id="errMsg"></div>
+
+  <div class="footer-note">Şifrenizi unuttuysanız sistem yöneticinize başvurun.</div>
+</div>
+
+<script>
+async function doLogin() {
+  const btn = document.getElementById('loginBtn');
+  const err = document.getElementById('errMsg');
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+
+  err.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Giriş yapılıyor…';
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Giriş başarısız');
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.role);
+    localStorage.setItem('company', data.company || '');
+    localStorage.setItem('username', data.username);
+
+    window.location.href = data.role === 'admin' ? '/dashboard' : '/giris';
+  } catch (e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Giriş Yap';
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// Zaten giriş yapılmışsa yönlendir
+const t = localStorage.getItem('token');
+if (t) {
+  fetch('/api/me', { headers: { Authorization: 'Bearer ' + t } })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => { if (d) window.location.href = d.role === 'admin' ? '/dashboard' : '/giris'; });
+}
+</script>
+</body>
+</html>
